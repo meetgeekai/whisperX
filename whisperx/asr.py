@@ -328,7 +328,7 @@ def load_model(whisper_arch,
         # for compatibility with faster-whisper d57c5b40b06e59ec44240d93485a95799548af50
         "log_prob_low_threshold": None,
         # for compatibility with faster-whisper d57c5b40b06e59ec44240d93485a95799548af50
-        "multilingual": None,
+        "multilingual": False,
         # for compatibility with faster-whisper d57c5b40b06e59ec44240d93485a95799548af50
         "output_language": None
     }
