@@ -39,9 +39,10 @@ class WhisperModel(faster_whisper.WhisperModel):
         previous_tokens = all_tokens[prompt_reset_since:]
         prompt = self.get_prompt(
             tokenizer,
-            previous_tokens,
+            previous_tokens=previous_tokens,
             without_timestamps=options.without_timestamps,
             prefix=options.prefix,
+            hotwords=options.hotwords,
         )
 
         encoder_output = self.encode(features)
