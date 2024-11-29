@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import List, Union, Optional, NamedTuple
+from typing import List, Union, Optional, NamedTuple, Tuple
 
 import ctranslate2
 import faster_whisper
