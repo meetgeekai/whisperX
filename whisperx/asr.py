@@ -12,6 +12,7 @@ from transformers.pipelines.pt_utils import PipelineIterator
 from .audio import N_SAMPLES, SAMPLE_RATE, load_audio, log_mel_spectrogram
 from .vad import load_vad_model, merge_chunks
 from .types import TranscriptionResult, SingleSegment
+from .feature_extractor import FeatureExtractor
 
 def find_numeral_symbol_tokens(tokenizer):
     numeral_symbol_tokens = []
@@ -27,6 +28,67 @@ class WhisperModel(faster_whisper.WhisperModel):
     FasterWhisperModel provides batched inference for faster-whisper.
     Currently only works in non-timestamp mode and fixed prompt for all samples in batch.
     '''
+
+    def __init__(
+            self,
+            model_size_or_path: str,
+            device: str = "auto",
+            device_index: Union[int, List[int]] = 0,
+            compute_type: str = "default",
+            cpu_threads: int = 0,
+            num_workers: int = 1,
+            download_root: Optional[str] = None,
+            local_files_only: bool = False,
+            files: dict = None,
+            **model_kwargs,
+    ):
+        super().__init__(
+            model_size_or_path,
+            device,
+            device_index,
+            compute_type,
+            cpu_threads,
+            num_workers,
+            download_root,
+            local_files_only,
+            files,
+            ** model_kwargs,
+        )
+
+        tokenizer_bytes, preprocessor_bytes = None, None
+        if files:
+            model_path = model_size_or_path
+            tokenizer_bytes = files.pop("tokenizer.json", None)
+            preprocessor_bytes = files.pop("preprocessor_config.json", None)
+        elif os.path.isdir(model_size_or_path):
+            model_path = model_size_or_path
+        else:
+            model_path = download_model(
+                model_size_or_path,
+                local_files_only=local_files_only,
+                cache_dir=download_root,
+            )
+
+        self.feat_kwargs = self._get_feature_kwargs(model_path, preprocessor_bytes)
+        self.feature_extractor = FeatureExtractor(**self.feat_kwargs)
+
+    def _get_feature_kwargs(self, model_path, preprocessor_bytes=None) -> dict:
+        config = {}
+        try:
+            config_path = os.path.join(model_path, "preprocessor_config.json")
+            if preprocessor_bytes:
+                config = json.loads(preprocessor_bytes)
+            elif os.path.isfile(config_path):
+                with open(config_path, "r", encoding="utf-8") as file:
+                    config = json.load(file)
+            else:
+                return config
+            valid_keys = signature(FeatureExtractor.__init__).parameters.keys()
+            return {k: v for k, v in config.items() if k in valid_keys}
+        except json.JSONDecodeError as e:
+            self.logger.warning("Could not load preprocessor config: %s", e)
+
+        return config
 
     def generate_segment_batched(self, features: np.ndarray, tokenizer: faster_whisper.tokenizer.Tokenizer, options: faster_whisper.transcribe.TranscriptionOptions, encoder_output = None):
         batch_size = features.shape[0]
