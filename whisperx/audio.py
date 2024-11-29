@@ -5,6 +5,7 @@ from typing import Optional, Union, BinaryIO
 
 import gc
 import io
+import itertools
 import av
 import numpy as np
 import faster_whisper
