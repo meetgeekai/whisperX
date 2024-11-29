@@ -7,4 +7,4 @@ setuptools>=65
 nltk
 
 # for compatibility with numpy 2.0.0 and pyannote.audio 3.3.2
-pyannote.audio>=3.3.2
+#pyannote.audio>=3.3.2
