@@ -242,20 +242,80 @@ class FasterWhisperPipeline(Pipeline):
 
         return {"segments": segments, "language": language}
 
+    def detect_language(
+        self,
+        audio: Optional[np.ndarray] = None,
+        features: Optional[np.ndarray] = None,
+        vad_filter: bool = False,
+        vad_parameters: Union[dict, VadOptions] = None,
+        language_detection_segments: int = 1,
+        language_detection_threshold: float = 0.5,
+    ) -> Tuple[str, float, List[Tuple[str, float]]]:
+        """
+        Use Whisper to detect the language of the input audio or features.
 
-    def detect_language(self, audio: np.ndarray):
-        if audio.shape[0] < N_SAMPLES:
-            print("Warning: audio is shorter than 30s, language detection may be inaccurate.")
-        model_n_mels = self.model.feat_kwargs.get("feature_size")
-        segment = log_mel_spectrogram(audio[: N_SAMPLES],
-                                      n_mels=model_n_mels if model_n_mels is not None else 80,
-                                      padding=0 if audio.shape[0] >= N_SAMPLES else N_SAMPLES - audio.shape[0])
-        encoder_output = self.model.encode(segment)
-        results = self.model.model.detect_language(encoder_output)
-        language_token, language_probability = results[0][0]
-        language = language_token[2:-2]
-        print(f"Detected language: {language} ({language_probability:.2f}) in first 30s of audio...")
-        return language
+        Arguments:
+            audio: Input audio signal, must be a 1D float array sampled at 16khz.
+            features: Input Mel spectrogram features, must be a float array with
+                shape (n_mels, n_frames), if `audio` is provided, the features will be ignored.
+                Either `audio` or `features` must be provided.
+            vad_filter: Enable the voice activity detection (VAD) to filter out parts of the audio
+                without speech. This step is using the Silero VAD model.
+            vad_parameters: Dictionary of Silero VAD parameters or VadOptions class (see available
+                parameters and default values in the class `VadOptions`).
+            language_detection_threshold: If the maximum probability of the language tokens is
+                higher than this value, the language is detected.
+            language_detection_segments: Number of segments to consider for the language detection.
+
+        Returns:
+            language: Detected language.
+            languege_probability: Probability of the detected language.
+            all_language_probs: List of tuples with all language names and probabilities.
+        """
+        assert (
+            audio is not None or features is not None
+        ), "Either `audio` or `features` must be provided."
+
+        if audio is not None:
+            if vad_filter:
+                speech_chunks = faster_whisper.vad.get_speech_timestamps(audio, vad_parameters)
+                audio_chunks, chunks_metadata = faster_whisper.vad.collect_chunks(audio, speech_chunks)
+                audio = np.concatenate(audio_chunks, axis=0)
+
+            audio = audio[
+                : language_detection_segments * self.model.feature_extractor.n_samples
+            ]
+            features = self.model.feature_extractor(audio)
+
+        features = features[
+            ..., : language_detection_segments * self.model.feature_extractor.nb_max_frames
+        ]
+
+        detected_language_info = {}
+        for i in range(0, features.shape[-1], self.model.feature_extractor.nb_max_frames):
+            encoder_output = self.encode(
+                pad_or_trim(features[..., i : i + self.model.feature_extractor.nb_max_frames])
+            )
+            # results is a list of tuple[str, float] with language names and probabilities.
+            results = self.model.model.detect_language(encoder_output)[0]
+
+            # Parse language names to strip out markers
+            all_language_probs = [(token[2:-2], prob) for (token, prob) in results]
+            # Get top language token and probability
+            language, language_probability = all_language_probs[0]
+            if language_probability > language_detection_threshold:
+                break
+            detected_language_info.setdefault(language, []).append(language_probability)
+        else:
+            # If no language detected for all segments, the majority vote of the highest
+            # projected languages for all segments is used to determine the language.
+            language = max(
+                detected_language_info,
+                key=lambda lang: len(detected_language_info[lang]),
+            )
+            language_probability = max(detected_language_info[language])
+
+        return language, language_probability, all_language_probs
 
 def load_model(whisper_arch,
                device,

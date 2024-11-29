@@ -1,11 +1,12 @@
 torch>=2.1.1
 torchaudio>=2.1.2
-faster-whisper==1.1.0
+#faster-whisper==1.1.0
+faster-whisper @ git+https://github.com/SYSTRAN/faster-whisper.git@8f01aee36b562e6be537e0341cdd40dc8bed33a7
 transformers
 pandas
 setuptools>=65
 nltk
 
 # for compatibility with numpy 2.0.0 and pyannote.audio 3.3.2
-#pyannote.audio>=3.3.2
-pyannote.audio==3.1.1
+pyannote.audio>=3.3.2
+#pyannote.audio==3.1.1
