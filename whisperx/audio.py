@@ -23,27 +23,64 @@ FRAMES_PER_SECOND = exact_div(SAMPLE_RATE, HOP_LENGTH)  # 10ms per audio frame
 TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audio token
 
 
-def load_audio(file: str, sr: int = SAMPLE_RATE):
+def load_audio(
+        input_file: str,
+        sampling_rate: int = SAMPLE_RATE,
+        split_stereo: bool = False,
+):
+    """Decodes the audio.
+
+    Args:
+      file: Path to the input file or a file-like object.
+      sr: Resample the audio to this sample rate.
+      split_stereo: Return separate left and right channels.
+
+    Returns:
+      A float32 Numpy array.
+
+      If `split_stereo` is enabled, the function returns a 2-tuple with the
+      separated left and right channels.
     """
-    Open an audio file and read as mono waveform, resampling as necessary
-
-    Parameters
-    ----------
-    file: str
-        The audio file to open
-
-    sr: int
-        The sample rate to resample the audio if necessary
-
-    Returns
-    -------
-    A NumPy array containing the audio waveform, in float32 dtype.
-    """
-
-    return faster_whisper.audio.decode_audio(
-        input_file=file,
-        sampling_rate=sr,
+    resampler = av.audio.resampler.AudioResampler(
+        format="s16",
+        layout="mono",
+        rate=sampling_rate,
     )
+
+    raw_buffer = io.BytesIO()
+    dtype = None
+
+    with av.open(input_file, mode="r", metadata_errors="ignore") as container:
+        frames = container.decode(audio=0)
+        frames = _ignore_invalid_frames(frames)
+        frames = _group_frames(frames, 500000)
+        frames = _resample_frames(frames, resampler)
+
+        for frame in frames:
+            array = frame.to_ndarray()
+            dtype = array.dtype
+            raw_buffer.write(array)
+
+    # It appears that some objects related to the resampler are not freed
+    # unless the garbage collector is manually run.
+    # https://github.com/SYSTRAN/faster-whisper/issues/390
+    # note that this slows down loading the audio a little bit
+    # if that is a concern, please use ffmpeg directly as in here:
+    # https://github.com/openai/whisper/blob/25639fc/whisper/audio.py#L25-L62
+    del resampler
+    gc.collect()
+
+    audio = np.frombuffer(raw_buffer.getbuffer(), dtype=dtype)
+
+    # Convert s16 back to f32.
+    audio = audio.astype(np.float32) / 32768.0
+
+    if split_stereo:
+        left_channel = audio[0::2]
+        right_channel = audio[1::2]
+        return left_channel, right_channel
+
+    return audio
 
 
 def pad_or_trim(array, length: int = N_SAMPLES, *, axis: int = -1):
