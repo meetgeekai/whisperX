@@ -63,7 +63,7 @@ class WhisperModel(faster_whisper.WhisperModel):
         elif os.path.isdir(model_size_or_path):
             model_path = model_size_or_path
         else:
-            model_path = download_model(
+            model_path = faster_whisper.utils.download_model(
                 model_size_or_path,
                 local_files_only=local_files_only,
                 cache_dir=download_root,
