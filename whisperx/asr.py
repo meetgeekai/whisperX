@@ -9,7 +9,7 @@ import torch
 from transformers import Pipeline
 from transformers.pipelines.pt_utils import PipelineIterator
 
-from .audio import N_SAMPLES, SAMPLE_RATE, load_audio, log_mel_spectrogram
+from .audio import N_SAMPLES, SAMPLE_RATE, load_audio, log_mel_spectrogram, pad_or_trim
 from .vad import load_vad_model, merge_chunks
 from .types import TranscriptionResult, SingleSegment
 from .feature_extractor import FeatureExtractor
