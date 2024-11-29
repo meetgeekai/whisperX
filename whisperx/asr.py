@@ -144,9 +144,14 @@ class WhisperModel(faster_whisper.WhisperModel):
         # unsqueeze if batch size = 1
         if len(features.shape) == 2:
             features = np.expand_dims(features, 0)
-        features = faster_whisper.transcribe.get_ctranslate2_storage(features)
+        features = get_ctranslate2_storage(features)
 
         return self.model.encode(features, to_cpu=to_cpu)
+
+def get_ctranslate2_storage(segment: np.ndarray) -> ctranslate2.StorageView:
+    segment = np.ascontiguousarray(segment)
+    segment = ctranslate2.StorageView.from_array(segment)
+    return segment
 
 class FasterWhisperPipeline(Pipeline):
     """
