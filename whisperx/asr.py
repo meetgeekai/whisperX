@@ -247,7 +247,7 @@ class FasterWhisperPipeline(Pipeline):
         audio: Optional[np.ndarray] = None,
         features: Optional[np.ndarray] = None,
         vad_filter: bool = False,
-        vad_parameters: Union[dict, VadOptions] = None,
+        vad_parameters: Union[dict, faster_whisper.vad.VadOptions] = None,
         language_detection_segments: int = 1,
         language_detection_threshold: float = 0.5,
     ) -> Tuple[str, float, List[Tuple[str, float]]]:
