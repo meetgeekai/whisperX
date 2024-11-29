@@ -355,7 +355,7 @@ class FasterWhisperPipeline(Pipeline):
 
         detected_language_info = {}
         for i in range(0, features.shape[-1], self.model.feature_extractor.nb_max_frames):
-            encoder_output = self.encode(
+            encoder_output = self.model.encode(
                 pad_or_trim(features[..., i : i + self.model.feature_extractor.nb_max_frames])
             )
             # results is a list of tuple[str, float] with language names and probabilities.

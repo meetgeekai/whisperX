@@ -1,8 +1,10 @@
 import os
 import subprocess
 from functools import lru_cache
-from typing import Optional, Union
+from typing import Optional, Union, BinaryIO
 
+import gc
+import io
 import av
 import numpy as np
 import faster_whisper
