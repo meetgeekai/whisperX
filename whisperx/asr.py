@@ -454,11 +454,11 @@ def load_model(whisper_arch,
         # for compatibility with faster-whisper V1.0.3
         "hotwords": None,
         # for compatibility with faster-whisper 08f6900217a6196051e312d5307621c4d444225a and older
-        "log_prob_low_threshold": None,
+        #"log_prob_low_threshold": None,
         # for compatibility with faster-whisper d57c5b40b06e59ec44240d93485a95799548af50 and newer
         "multilingual": False,
         # for compatibility with faster-whisper bcd8ce0fc72d1fa4e42bdf5fd34d5d17bae680c2 and older
-        "output_language": None,
+        #"output_language": None,
     }
 
     if asr_options is not None:
