@@ -1,12 +1,8 @@
 import os
 import subprocess
 from functools import lru_cache
-from typing import Optional, Union, BinaryIO
+from typing import Optional, Union
 
-import gc
-import io
-import itertools
-import av
 import numpy as np
 import faster_whisper
 import torch
@@ -27,109 +23,51 @@ FRAMES_PER_SECOND = exact_div(SAMPLE_RATE, HOP_LENGTH)  # 10ms per audio frame
 TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audio token
 
 
-def load_audio(
-        input_file: str,
-        sampling_rate: int = SAMPLE_RATE,
-        split_stereo: bool = False,
-):
-    """Decodes the audio.
-
-    Args:
-      file: Path to the input file or a file-like object.
-      sr: Resample the audio to this sample rate.
-      split_stereo: Return separate left and right channels.
-
-    Returns:
-      A float32 Numpy array.
-
-      If `split_stereo` is enabled, the function returns a 2-tuple with the
-      separated left and right channels.
+def load_audio(file: str, sr: int = SAMPLE_RATE):
     """
-    resampler = av.audio.resampler.AudioResampler(
-        format="s16",
-        layout="mono",
-        rate=sampling_rate,
+    Open an audio file and read as mono waveform, resampling as necessary
+
+    Parameters
+    ----------
+    file: str
+        The audio file to open
+
+    sr: int
+        The sample rate to resample the audio if necessary
+
+    Returns
+    -------
+    A NumPy array containing the audio waveform, in float32 dtype.
+    """
+
+    return faster_whisper.audio.decode_audio(
+        input_file=file,
+        sampling_rate=sr,
     )
 
-    raw_buffer = io.BytesIO()
-    dtype = None
 
-    with av.open(input_file, mode="r", metadata_errors="ignore") as container:
-        frames = container.decode(audio=0)
-        frames = _ignore_invalid_frames(frames)
-        frames = _group_frames(frames, 500000)
-        frames = _resample_frames(frames, resampler)
-
-        for frame in frames:
-            array = frame.to_ndarray()
-            dtype = array.dtype
-            raw_buffer.write(array)
-
-    # It appears that some objects related to the resampler are not freed
-    # unless the garbage collector is manually run.
-    # https://github.com/SYSTRAN/faster-whisper/issues/390
-    # note that this slows down loading the audio a little bit
-    # if that is a concern, please use ffmpeg directly as in here:
-    # https://github.com/openai/whisper/blob/25639fc/whisper/audio.py#L25-L62
-    del resampler
-    gc.collect()
-
-    audio = np.frombuffer(raw_buffer.getbuffer(), dtype=dtype)
-
-    # Convert s16 back to f32.
-    audio = audio.astype(np.float32) / 32768.0
-
-    if split_stereo:
-        left_channel = audio[0::2]
-        right_channel = audio[1::2]
-        return left_channel, right_channel
-
-    return audio
-
-
-def _ignore_invalid_frames(frames):
-    iterator = iter(frames)
-
-    while True:
-        try:
-            yield next(iterator)
-        except StopIteration:
-            break
-        except av.error.InvalidDataError:
-            continue
-
-
-def _group_frames(frames, num_samples=None):
-    fifo = av.audio.fifo.AudioFifo()
-
-    for frame in frames:
-        frame.pts = None  # Ignore timestamp check.
-        fifo.write(frame)
-
-        if num_samples is not None and fifo.samples >= num_samples:
-            yield fifo.read()
-
-    if fifo.samples > 0:
-        yield fifo.read()
-
-
-def _resample_frames(frames, resampler):
-    # Add None to flush the resampler.
-    for frame in itertools.chain(frames, [None]):
-        yield from resampler.resample(frame)
-
-
-def pad_or_trim(array, length: int = 3000, *, axis: int = -1):
+def pad_or_trim(array, length: int = N_SAMPLES, *, axis: int = -1):
     """
-    Pad or trim the Mel features array to 3000, as expected by the encoder.
+    Pad or trim the audio array to N_SAMPLES, as expected by the encoder.
     """
-    if array.shape[axis] > length:
-        array = array.take(indices=range(length), axis=axis)
+    if torch.is_tensor(array):
+        if array.shape[axis] > length:
+            array = array.index_select(
+                dim=axis, index=torch.arange(length, device=array.device)
+            )
 
-    if array.shape[axis] < length:
-        pad_widths = [(0, 0)] * array.ndim
-        pad_widths[axis] = (0, length - array.shape[axis])
-        array = np.pad(array, pad_widths)
+        if array.shape[axis] < length:
+            pad_widths = [(0, 0)] * array.ndim
+            pad_widths[axis] = (0, length - array.shape[axis])
+            array = F.pad(array, [pad for sizes in pad_widths[::-1] for pad in sizes])
+    else:
+        if array.shape[axis] > length:
+            array = array.take(indices=range(length), axis=axis)
+
+        if array.shape[axis] < length:
+            pad_widths = [(0, 0)] * array.ndim
+            pad_widths[axis] = (0, length - array.shape[axis])
+            array = np.pad(array, pad_widths)
 
     return array
 
