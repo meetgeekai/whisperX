@@ -15,7 +15,7 @@
 #
 # This PR should fix the OOM problem.
 # Alt solution could be removing lru_cache.
-faster-whisper @ git+https://github.com/SYSTRAN/faster-whisper.git@01340c20c7233ce226b94c537045f65d6baee4a6
+faster-whisper @ git+https://github.com/SYSTRAN/faster-whisper.git@35357ca7470a644237a0f8d78b4f4a1aafeb6491
 
 transformers
 pandas
