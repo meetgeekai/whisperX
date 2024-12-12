@@ -40,14 +40,11 @@ def load_audio(file: str, sr: int = SAMPLE_RATE):
     A NumPy array containing the audio waveform, in float32 dtype.
     """
 
-    # return faster_whisper.audio.decode_audio(
-    #     input_file=file,
-    #     sampling_rate=sr,
-    # )
-    return decode_audio_ffmpeg(
-        file=file,
-        sr=sr,
+    return faster_whisper.audio.decode_audio(
+        input_file=file,
+        sampling_rate=sr,
     )
+
 
 def decode_audio_ffmpeg(file: str, sr: int = SAMPLE_RATE):
     """
