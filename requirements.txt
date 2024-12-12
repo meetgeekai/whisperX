@@ -1,22 +1,6 @@
 torch>=2.1.1
 torchaudio>=2.1.2
-
-# pypi official version
-#faster-whisper==1.1.0
-
-# master
-#faster-whisper @ git+https://github.com/SYSTRAN/faster-whisper.git@8327d8cc647266ed66f6cd878cf97eccface7351
-
-# https://github.com/SYSTRAN/faster-whisper/pull/1198/commits - Purfview:patch-3
-# Reported problems:
-# 1193 #1169
-#
-# VAD implementation consumes humongous memory amount [original Silero doesn't have this problem]
-#
-# This PR should fix the OOM problem.
-# Alt solution could be removing lru_cache.
-faster-whisper @ git+https://github.com/SYSTRAN/faster-whisper.git@35357ca7470a644237a0f8d78b4f4a1aafeb6491
-
+faster-whisper @ git+https://github.com/SYSTRAN/faster-whisper.git@1b24f284c9b39bcdf47233d7ae507abaea7a98c8
 transformers
 pandas
 setuptools>=65
