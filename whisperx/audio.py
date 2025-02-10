@@ -4,7 +4,6 @@ from functools import lru_cache
 from typing import Optional, Union
 
 import numpy as np
-import faster_whisper
 import torch
 import torch.nn.functional as F
 
@@ -24,29 +23,6 @@ TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audi
 
 
 def load_audio(file: str, sr: int = SAMPLE_RATE):
-    """
-    Open an audio file and read as mono waveform, resampling as necessary
-
-    Parameters
-    ----------
-    file: str
-        The audio file to open
-
-    sr: int
-        The sample rate to resample the audio if necessary
-
-    Returns
-    -------
-    A NumPy array containing the audio waveform, in float32 dtype.
-    """
-
-    return faster_whisper.audio.decode_audio(
-        input_file=file,
-        sampling_rate=sr,
-    )
-
-
-def decode_audio_ffmpeg(file: str, sr: int = SAMPLE_RATE):
     """
     Open an audio file and read as mono waveform, resampling as necessary
 

@@ -39,10 +39,9 @@ class WhisperModel(faster_whisper.WhisperModel):
         previous_tokens = all_tokens[prompt_reset_since:]
         prompt = self.get_prompt(
             tokenizer,
-            previous_tokens=previous_tokens,
+            previous_tokens,
             without_timestamps=options.without_timestamps,
             prefix=options.prefix,
-            hotwords=options.hotwords,
         )
 
         encoder_output = self.encode(features)
@@ -326,12 +325,12 @@ def load_model(whisper_arch,
         "hallucination_silence_threshold": None,
         # for compatibility with faster-whisper V1.0.3
         "hotwords": None,
-        # for compatibility with faster-whisper 08f6900217a6196051e312d5307621c4d444225a and older
-        #"log_prob_low_threshold": None,
-        # for compatibility with faster-whisper d57c5b40b06e59ec44240d93485a95799548af50 and newer
+        # for compatibility with faster-whisper d57c5b40b06e59ec44240d93485a95799548af50
+        "log_prob_low_threshold": None,
+        # for compatibility with faster-whisper d57c5b40b06e59ec44240d93485a95799548af50
         "multilingual": False,
-        # for compatibility with faster-whisper bcd8ce0fc72d1fa4e42bdf5fd34d5d17bae680c2 and older
-        #"output_language": None,
+        # for compatibility with faster-whisper d57c5b40b06e59ec44240d93485a95799548af50
+        "output_language": None
     }
 
     if asr_options is not None:
